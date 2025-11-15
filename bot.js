@@ -170,6 +170,103 @@ const FALLBACK_QURAN_VERSES = [
     }
 ];
 
+// FIXED: Function to get comprehensive Athkar package (split into multiple messages)
+async function sendAthkarPackage(message, isMorning = true) {
+    const athkarList = isMorning ? MORNING_ATHKAR : EVENING_ATHKAR;
+    const time = isMorning ? "الصباح" : "المساء";
+    
+    // Send header first
+    await message.channel.send(`🕌 **باقة أذكار ${time} الكاملة** 🌟\n\n` +
+                              `*هذه الأذكار من السنة النبوية الصحيحة*\n` +
+                              `────────────────────`);
+
+    // Send each thikr in separate messages to avoid character limit
+    for (let i = 0; i < athkarList.length; i++) {
+        const thikr = athkarList[i];
+        
+        let thikrMessage = `**${i + 1}. ${thikr.times > 1 ? `(${thikr.times} مرة)` : ''}**\n`;
+        thikrMessage += `📖 ${thikr.arabic}\n`;
+        thikrMessage += `*${thikr.transliteration}*\n`;
+        thikrMessage += `"${thikr.meaning}"\n`;
+        
+        // Add separator between thikr
+        if (i < athkarList.length - 1) {
+            thikrMessage += `────────────────────`;
+        }
+        
+        await message.channel.send(thikrMessage);
+        
+        // Small delay to avoid rate limiting
+        await new Promise(resolve => setTimeout(resolve, 500));
+    }
+    
+    // Send footer
+    await message.channel.send(`\n📖 * recite these ${time} Athkar for protection and blessings *`);
+}
+
+// FIXED: Function to get daily single Athkar
+function getDailyAthkar(isMorning = true) {
+    const athkarList = isMorning ? MORNING_ATHKAR : EVENING_ATHKAR;
+    const randomThikr = athkarList[Math.floor(Math.random() * athkarList.length)];
+    const time = isMorning ? "الصباح" : "المساء";
+    
+    return `🕌 **ذكر ${time}**\n\n` +
+           `${randomThikr.arabic}\n\n` +
+           `*${randomThikr.transliteration}*\n` +
+           `"${randomThikr.meaning}"\n\n` +
+           `*كرر ${randomThikr.times} مرة للثواب الأعظم*`;
+}
+
+// NEW: Function to get next prayer time
+function getNextPrayer() {
+    const now = new Date();
+    const currentTime = now.getHours() * 60 + now.getMinutes(); // Convert to minutes
+    
+    const prayerTimes = [
+        { name: 'Fajr', time: currentPrayerTimes.Fajr },
+        { name: 'Dhuhr', time: currentPrayerTimes.Dhuhr },
+        { name: 'Asr', time: currentPrayerTimes.Asr },
+        { name: 'Maghrib', time: currentPrayerTimes.Maghrib },
+        { name: 'Isha', time: currentPrayerTimes.Isha }
+    ];
+    
+    // Convert prayer times to minutes
+    const prayerMinutes = prayerTimes.map(prayer => {
+        const [hours, minutes] = prayer.time.split(':').map(Number);
+        return {
+            name: prayer.name,
+            minutes: hours * 60 + minutes
+        };
+    });
+    
+    // Find next prayer
+    let nextPrayer = null;
+    for (const prayer of prayerMinutes) {
+        if (prayer.minutes > currentTime) {
+            nextPrayer = prayer;
+            break;
+        }
+    }
+    
+    // If no prayer found today, use first prayer tomorrow
+    if (!nextPrayer) {
+        nextPrayer = prayerMinutes[0];
+        nextPrayer.minutes += 24 * 60; // Add 24 hours
+    }
+    
+    // Calculate time difference
+    const timeDiff = nextPrayer.minutes - currentTime;
+    const hoursLeft = Math.floor(timeDiff / 60);
+    const minutesLeft = timeDiff % 60;
+    
+    return {
+        name: nextPrayer.name,
+        time: prayerTimes.find(p => p.name === nextPrayer.name).time,
+        hoursLeft: hoursLeft,
+        minutesLeft: minutesLeft
+    };
+}
+
 // QURAN FUNCTIONS (API + Fallback)
 async function getQuranVerse() {
     try {
@@ -224,33 +321,6 @@ function getFallbackQuranVerse() {
     return `📖 **آية قرآنية**\n${randomVerse.text}\n*${randomVerse.reference}*`;
 }
 
-// Function to get comprehensive Athkar package
-function getAthkarPackage(isMorning = true) {
-    const athkarList = isMorning ? MORNING_ATHKAR : EVENING_ATHKAR;
-    const time = isMorning ? "Morning" : "Evening";
-    
-    let package = `🕌 **${time} Athkar Package** 🌟\n\n`;
-    
-    athkarList.forEach((thikr, index) => {
-        package += `**${index + 1}. ${thikr.times > 1 ? `(${thikr.times}x)` : ''}**\n`;
-        package += `${thikr.arabic}\n`;
-        package += `*${thikr.transliteration}*\n`;
-        package += `"${thikr.meaning}"\n\n`;
-    });
-    
-    package += `📖 *Recite these ${time.toLowerCase()} Athkar for protection and blessings*`;
-    return package;
-}
-
-// Function to get daily single Athkar
-function getDailyAthkar(isMorning = true) {
-    const athkarList = isMorning ? MORNING_ATHKAR : EVENING_ATHKAR;
-    const randomThikr = athkarList[Math.floor(Math.random() * athkarList.length)];
-    const time = isMorning ? "Morning" : "Evening";
-    
-    return `🕌 **${time} Thikr**\n${randomThikr.arabic}\n*${randomThikr.transliteration}*\n"${randomThikr.meaning}"\n\n*Repeat ${randomThikr.times} time(s) for greater reward*`;
-}
-
 client.once('ready', async () => {
     console.log(`✅ Bot online: ${client.user.tag}`);
     client.user.setActivity('Prayer Reminders', { type: ActivityType.Listening });
@@ -270,6 +340,16 @@ client.on('messageCreate', async (message) => {
         for (const [prayer, time] of Object.entries(currentPrayerTimes)) {
             response += `**${prayer}**: ${time}\n`;
         }
+        message.channel.send(response);
+    }
+
+    // NEW: Next prayer command
+    if (message.content === '!next') {
+        const nextPrayer = getNextPrayer();
+        const response = `🕌 **Next Prayer: ${nextPrayer.name}**\n` +
+                        `⏰ Time: ${nextPrayer.time}\n` +
+                        `⏳ Time left: ${nextPrayer.hoursLeft}h ${nextPrayer.minutesLeft}m\n` +
+                        `_${nextPrayer.hoursLeft > 0 ? 'Relax and prepare!' : 'Get ready! Prayer is soon!'}_`;
         message.channel.send(response);
     }
 
@@ -324,6 +404,7 @@ client.on('messageCreate', async (message) => {
 
 **أوقات الصلاة:**
 \`!prayertimes\` - عرض أوقات الصلاة اليوم
+\`!next\` - الوقت المتبقي للصلاة القادمة
 \`!refreshtimes\` - تحديث أوقات الصلاة من API
 
 **الأذكار والقرآن:**
@@ -353,7 +434,7 @@ client.on('messageCreate', async (message) => {
         message.channel.send(helpMessage);
     }
 
-    // ATHKAR & QURAN COMMANDS
+    // FIXED ATHKAR & QURAN COMMANDS
     if (message.content === '!morning') {
         const athkar = getDailyAthkar(true);
         message.channel.send(athkar);
@@ -365,13 +446,19 @@ client.on('messageCreate', async (message) => {
     }
 
     if (message.content === '!morningpackage') {
-        const package = getAthkarPackage(true);
-        message.channel.send(package);
+        // Send initial loading message
+        const loadingMsg = await message.channel.send('🔄 جاري تحميل باقة أذكار الصباح الكاملة...');
+        await sendAthkarPackage(message, true);
+        // Delete loading message after done
+        setTimeout(() => loadingMsg.delete().catch(console.error), 3000);
     }
 
     if (message.content === '!eveningpackage') {
-        const package = getAthkarPackage(false);
-        message.channel.send(package);
+        // Send initial loading message
+        const loadingMsg = await message.channel.send('🔄 جاري تحميل باقة أذكار المساء الكاملة...');
+        await sendAthkarPackage(message, false);
+        // Delete loading message after done
+        setTimeout(() => loadingMsg.delete().catch(console.error), 3000);
     }
 
     if (message.content === '!quran') {
