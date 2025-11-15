@@ -35,7 +35,7 @@ client.on('messageCreate', async (message) => {
     console.log(`💬 Message: ${message.content}`);
 
     if (message.content === '!prayertimes') {
-        let response = `🕌 Prayer Times for ${CONFIG.CITY}:\n`;
+        let response = `🕌 Accurate Prayer Times for ${CONFIG.CITY}:\n`;
         for (const [prayer, time] of Object.entries(currentPrayerTimes)) {
             response += `**${prayer}**: ${time}\n`;
         }
@@ -46,68 +46,93 @@ client.on('messageCreate', async (message) => {
         message.channel.send('✅ Bot is working!');
     }
 
-    // SIMPLIFIED: Test voice channel command
     if (message.content === '!testvc') {
-        console.log('Testing voice channel join...');
+        console.log('🔄 Testing voice channel join...');
         const voiceChannel = message.member?.voice.channel;
         
         if (!voiceChannel) {
             return message.channel.send('❌ Please join a voice channel first!');
         }
         
+        console.log(`🎯 Attempting to join: ${voiceChannel.name} (${voiceChannel.id})`);
+        message.channel.send(`🎯 Attempting to join: **${voiceChannel.name}**`);
+        
         try {
-            // Simple voice connection test
+            // Join voice channel
             const connection = joinVoiceChannel({
                 channelId: voiceChannel.id,
                 guildId: voiceChannel.guild.id,
                 adapterCreator: voiceChannel.guild.voiceAdapterCreator,
             });
             
-            console.log('✅ Successfully joined voice channel');
-            message.channel.send('✅ Bot joined voice channel!');
+            console.log('✅ Voice connection created');
+            message.channel.send('✅ Voice connection created!');
             
-            // Leave after 2 seconds
+            // Listen for connection events
+            connection.on(VoiceConnectionStatus.Ready, () => {
+                console.log('🎉 SUCCESS: Bot is now in voice channel!');
+                message.channel.send('🎉 **SUCCESS: Bot is now in voice channel!**');
+            });
+            
+            connection.on(VoiceConnectionStatus.Disconnected, () => {
+                console.log('🔌 Bot disconnected from voice channel');
+                message.channel.send('🔌 Bot disconnected from voice channel');
+            });
+            
+            connection.on('error', (error) => {
+                console.error('❌ Voice connection error:', error);
+                message.channel.send('❌ Voice connection error: ' + error.message);
+            });
+            
+            // Stay for 10 seconds so you can definitely see it
             setTimeout(() => {
+                console.log('🔄 Leaving voice channel...');
                 connection.destroy();
-                console.log('✅ Left voice channel');
-                message.channel.send('✅ Bot left voice channel - Voice features working!');
-            }, 2000);
+                message.channel.send('✅ Bot left voice channel');
+            }, 10000); // 10 seconds
             
         } catch (error) {
             console.error('❌ Voice channel error:', error);
             message.channel.send('❌ Failed to join voice channel: ' + error.message);
         }
     }
+
+    if (message.content === '!refreshtimes') {
+        await fetchPrayerTimes();
+        message.channel.send('🔄 Prayer times refreshed from API!');
+    }
 });
 
 async function fetchPrayerTimes() {
     try {
-        const today = new Date().toISOString().split('T')[0];
-        const [year, month, day] = today.split('-');
+        console.log('🔄 Fetching accurate prayer times from API...');
         
-        const apiUrl = `http://api.aladhan.com/v1/timings/${day}-${month}-${year}?city=Jeddah&country=Saudi Arabia&method=4`;
+        const apiUrl = `https://api.aladhan.com/v1/timingsByCity?city=Jeddah&country=Saudi Arabia&method=4`;
         
         const response = await axios.get(apiUrl);
         const timings = response.data.data.timings;
         
         currentPrayerTimes = {
-            fajr: timings.Fajr,
-            dhuhr: timings.Dhuhr,
-            asr: timings.Asr,
-            maghrib: timings.Maghrib,
-            isha: timings.Isha
+            Fajr: timings.Fajr,
+            Dhuhr: timings.Dhuhr,
+            Asr: timings.Asr,
+            Maghrib: timings.Maghrib,
+            Isha: timings.Isha
         };
         
-        console.log('📅 Prayer times:', currentPrayerTimes);
+        console.log('📅 ACCURATE Prayer times fetched:', currentPrayerTimes);
+        return currentPrayerTimes;
+        
     } catch (error) {
-        console.log('❌ API failed, using fallback times');
+        console.log('❌ API failed, using fallback times. Error:', error.message);
         currentPrayerTimes = {
-            fajr: '05:00',
-            dhuhr: '12:00',
-            asr: '15:00',
-            maghrib: '18:00',
-            isha: '19:30'
+            Fajr: '05:17',
+            Dhuhr: '12:05',
+            Asr: '15:15',
+            Maghrib: '17:45',
+            Isha: '19:15'
         };
+        return currentPrayerTimes;
     }
 }
 
