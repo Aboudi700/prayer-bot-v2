@@ -23,15 +23,244 @@ const player = createAudioPlayer();
 let currentPrayerTimes = {};
 let scheduledTextReminders = new Map();
 
+// COMPREHENSIVE ATHKAR COLLECTION
+const MORNING_ATHKAR = [
+    {
+        arabic: "أَصْبَحْنَا وَأَصْبَحَ الْمُلْكُ لِلَّهِ، وَالْحَمْدُ لِلَّهِ، لا إِلَهَ إِلاَّ اللَّهُ وَحْدَهُ لا شَرِيكَ لَهُ، لَهُ الْمُلْكُ وَلَهُ الْحَمْدُ وَهُوَ عَلَى كُلِّ شَيْءٍ قَدِيرٌ",
+        transliteration: "Asbahna wa asbahal-mulku lillah, walhamdulillah, la ilaha illallah wahdahu la sharika lah, lahul-mulku wa lahul-hamd, wa huwa 'ala kulli shay'in qadeer",
+        meaning: "We have reached the morning and at this very time all sovereignty belongs to Allah. All praise is for Allah. There is none worthy of worship but Allah, alone, without any partner. To Him belongs all sovereignty and praise and He is over all things omnipotent.",
+        times: 1
+    },
+    {
+        arabic: "اللَّهُمَّ بِكَ أَصْبَحْنَا، وَبِكَ أَمْسَيْنَا، وَبِكَ نَحْيَا، وَبِكَ نَمُوتُ وَإِلَيْكَ النُّشُورُ",
+        transliteration: "Allahumma bika asbahna, wa bika amsayna, wa bika nahya, wa bika namutu wa ilaykan-nushur",
+        meaning: "O Allah, by Your leave we have reached the morning and by Your leave we have reached the evening, by Your leave we live and die and unto You is our resurrection.",
+        times: 1
+    },
+    {
+        arabic: "اللَّهُمَّ أَنْتَ رَبِّي لا إِلَهَ إِلا أَنْتَ، خَلَقْتَنِي وَأَنَا عَبْدُكَ، وَأَنَا عَلَى عَهْدِكَ وَوَعْدِكَ مَا اسْتَطَعْتُ، أَعُوذُ بِكَ مِنْ شَرِّ مَا صَنَعْتُ، أَبُوءُ لَكَ بِنِعْمَتِكَ عَلَيَّ، وَأَبُوءُ بِذَنْبِي فَاغْفِرْ لِي فَإِنَّهُ لا يَغْفِرُ الذُّنُوبَ إِلا أَنْتَ",
+        transliteration: "Allahumma anta rabbi la ilaha illa anta, khalaqtani wa ana 'abduka, wa ana 'ala 'ahdika wa wa'dika mastata'tu, a'uthu bika min sharri ma sana'tu, abu'u laka bini'matika 'alayya, wa abu'u bidhanbi faghfir li fa innahu la yaghfirudh-dhunuba illa anta",
+        meaning: "O Allah, You are my Lord, none has the right to be worshipped except You. You created me and I am Your servant. I abide by Your covenant and promise as best I can. I take refuge in You from the evil of what I have done. I acknowledge Your favor upon me and I acknowledge my sin, so forgive me, for verily none can forgive sin except You.",
+        times: 1
+    },
+    {
+        arabic: "اللَّهُمَّ عَافِنِي فِي بَدَنِي، اللَّهُمَّ عَافِنِي فِي سَمْعِي، اللَّهُمَّ عَافِنِي فِي بَصَرِي، لا إِلَهَ إِلا أَنْتَ. اللَّهُمَّ إِنِّي أَعُوذُ بِكَ مِنَ الْكُفْرِ، وَالْفَقْرِ، وَأَعُوذُ بِكَ مِنْ عَذَابِ الْقَبْرِ، لا إِلَهَ إِلا أَنْتَ",
+        transliteration: "Allahumma 'afini fi badani, allahumma 'afini fi sam'i, allahumma 'afini fi basari, la ilaha illa anta. Allahumma inni a'uthu bika minal-kufri, wal-faqri, wa a'uthu bika min 'adhabil-qabri, la ilaha illa anta",
+        meaning: "O Allah, grant me health in my body. O Allah, grant me health in my hearing. O Allah, grant me health in my sight. There is none worthy of worship but You. O Allah, I take refuge with You from disbelief and poverty, and I take refuge with You from the punishment of the grave. There is none worthy of worship but You.",
+        times: 3
+    },
+    {
+        arabic: "حَسْبِيَ اللَّهُ لا إِلَهَ إِلا هُوَ عَلَيْهِ تَوَكَّلْتُ وَهُوَ رَبُّ الْعَرْشِ الْعَظِيمِ",
+        transliteration: "Hasbiyallahu la ilaha illa huwa, 'alayhi tawakkaltu, wa huwa rabbul-'arshil-'azheem",
+        meaning: "Allah is sufficient for me. There is none worthy of worship but Him. I have placed my trust in Him, and He is the Lord of the Majestic Throne.",
+        times: 7
+    },
+    {
+        arabic: "سُبْحَانَ اللَّهِ وَبِحَمْدِهِ",
+        transliteration: "Subhanallahi wa bihamdihi",
+        meaning: "How perfect Allah is and I praise Him.",
+        times: 100
+    },
+    {
+        arabic: "أَسْتَغْفِرُ اللَّهَ وَأَتُوبُ إِلَيْهِ",
+        transliteration: "Astaghfirullah wa atubu ilayh",
+        meaning: "I seek forgiveness from Allah and repent to Him.",
+        times: 100
+    },
+    {
+        arabic: "لا إِلَهَ إِلا اللَّهُ وَحْدَهُ لا شَرِيكَ لَهُ، لَهُ الْمُلْكُ وَلَهُ الْحَمْدُ وَهُوَ عَلَى كُلِّ شَيْءٍ قَدِيرٌ",
+        transliteration: "La ilaha illallahu wahdahu la sharika lah, lahul-mulku wa lahul-hamd, wa huwa 'ala kulli shay'in qadeer",
+        meaning: "There is none worthy of worship but Allah alone, without any partner. To Him belongs the sovereignty and to Him belongs all praise, and He is over all things omnipotent.",
+        times: 10
+    }
+];
+
+const EVENING_ATHKAR = [
+    {
+        arabic: "أَمْسَيْنَا وَأَمْسَى الْمُلْكُ لِلَّهِ، وَالْحَمْدُ لِلَّهِ، لا إِلَهَ إِلاَّ اللَّهُ وَحْدَهُ لا شَرِيكَ لَهُ، لَهُ الْمُلْكُ وَلَهُ الْحَمْدُ وَهُوَ عَلَى كُلِّ شَيْءٍ قَدِيرٌ",
+        transliteration: "Amsayna wa amsal-mulku lillah, walhamdulillah, la ilaha illallah wahdahu la sharika lah, lahul-mulku wa lahul-hamd, wa huwa 'ala kulli shay'in qadeer",
+        meaning: "We have reached the evening and at this very time all sovereignty belongs to Allah. All praise is for Allah. There is none worthy of worship but Allah, alone, without any partner. To Him belongs all sovereignty and praise and He is over all things omnipotent.",
+        times: 1
+    },
+    {
+        arabic: "اللَّهُمَّ بِكَ أَمْسَيْنَا، وَبِكَ أَصْبَحْنَا، وَبِكَ نَحْيَا، وَبِكَ نَمُوتُ وَإِلَيْكَ الْمَصِيرُ",
+        transliteration: "Allahumma bika amsayna, wa bika asbahna, wa bika nahya, wa bika namutu wa ilaykal-maseer",
+        meaning: "O Allah, by Your leave we have reached the evening and by Your leave we have reached the morning, by Your leave we live and die and unto You is our return.",
+        times: 1
+    },
+    {
+        arabic: "اللَّهُمَّ أَنْتَ رَبِّي لا إِلَهَ إِلا أَنْتَ، خَلَقْتَنِي وَأَنَا عَبْدُكَ، وَأَنَا عَلَى عَهْدِكَ وَوَعْدِكَ مَا اسْتَطَعْتُ، أَعُوذُ بِكَ مِنْ شَرِّ مَا صَنَعْتُ، أَبُوءُ لَكَ بِنِعْمَتِكَ عَلَيَّ، وَأَبُوءُ بِذَنْبِي فَاغْفِرْ لِي فَإِنَّهُ لا يَغْفِرُ الذُّنُوبَ إِلا أَنْتَ",
+        transliteration: "Allahumma anta rabbi la ilaha illa anta, khalaqtani wa ana 'abduka, wa ana 'ala 'ahdika wa wa'dika mastata'tu, a'uthu bika min sharri ma sana'tu, abu'u laka bini'matika 'alayya, wa abu'u bidhanbi faghfir li fa innahu la yaghfirudh-dhunuba illa anta",
+        meaning: "O Allah, You are my Lord, none has the right to be worshipped except You. You created me and I am Your servant. I abide by Your covenant and promise as best I can. I take refuge in You from the evil of what I have done. I acknowledge Your favor upon me and I acknowledge my sin, so forgive me, for verily none can forgive sin except You.",
+        times: 1
+    },
+    {
+        arabic: "اللَّهُمَّ عَافِنِي فِي بَدَنِي، اللَّهُمَّ عَافِنِي فِي سَمْعِي، اللَّهُمَّ عَافِنِي فِي بَصَرِي، لا إِلَهَ إِلا أَنْتَ. اللَّهُمَّ إِنِّي أَعُوذُ بِكَ مِنَ الْكُفْرِ، وَالْفَقْرِ، وَأَعُوذُ بِكَ مِنْ عَذَابِ الْقَبْرِ، لا إِلَهَ إِلا أَنْتَ",
+        transliteration: "Allahumma 'afini fi badani, allahumma 'afini fi sam'i, allahumma 'afini fi basari, la ilaha illa anta. Allahumma inni a'uthu bika minal-kufri, wal-faqri, wa a'uthu bika min 'adhabil-qabri, la ilaha illa anta",
+        meaning: "O Allah, grant me health in my body. O Allah, grant me health in my hearing. O Allah, grant me health in my sight. There is none worthy of worship but You. O Allah, I take refuge with You from disbelief and poverty, and I take refuge with You from the punishment of the grave. There is none worthy of worship but You.",
+        times: 3
+    },
+    {
+        arabic: "حَسْبِيَ اللَّهُ لا إِلَهَ إِلا هُوَ عَلَيْهِ تَوَكَّلْتُ وَهُوَ رَبُّ الْعَرْشِ الْعَظِيمِ",
+        transliteration: "Hasbiyallahu la ilaha illa huwa, 'alayhi tawakkaltu, wa huwa rabbul-'arshil-'azheem",
+        meaning: "Allah is sufficient for me. There is none worthy of worship but Him. I have placed my trust in Him, and He is the Lord of the Majestic Throne.",
+        times: 7
+    },
+    {
+        arabic: "سُبْحَانَ اللَّهِ وَبِحَمْدِهِ",
+        transliteration: "Subhanallahi wa bihamdihi",
+        meaning: "How perfect Allah is and I praise Him.",
+        times: 100
+    },
+    {
+        arabic: "أَسْتَغْفِرُ اللَّهَ وَأَتُوبُ إِلَيْهِ",
+        transliteration: "Astaghfirullah wa atubu ilayh",
+        meaning: "I seek forgiveness from Allah and repent to Him.",
+        times: 100
+    },
+    {
+        arabic: "آمَنَّا بِاللَّهِ وَحْدَهُ لا شَرِيكَ لَهُ، وَكَفَرْنَا بِمَا يُعْبَدُ مِنْ دُونِهِ",
+        transliteration: "Amanna billahi wahdahu la sharika lah, wa kafarna bima yu'badu min dunih",
+        meaning: "We believe in Allah alone without any partner, and we disbelieve in whatever is worshipped besides Him.",
+        times: 3
+    }
+];
+
+// FALLBACK QURAN VERSES (Arabic)
+const FALLBACK_QURAN_VERSES = [
+    {
+        text: "فَإِنَّ مَعَ الْعُسْرِ يُسْرًا",
+        reference: "القرآن 94:6"
+    },
+    {
+        text: "وَمَا أَرْسَلْنَاكَ إِلَّا رَحْمَةً لِّلْعَالَمِينَ",
+        reference: "القرآن 21:107"
+    },
+    {
+        text: "لَا يُكَلِّفُ اللَّهُ نَفْسًا إِلَّا وُسْعَهَا",
+        reference: "القرآن 2:286"
+    },
+    {
+        text: "أَلَا بِذِكْرِ اللَّهِ تَطْمَئِنُّ الْقُلُوبُ",
+        reference: "القرآن 13:28"
+    },
+    {
+        text: "وَمَن يَتَوَكَّلْ عَلَى اللَّهِ فَهُوَ حَسْبُهُ",
+        reference: "القرآن 65:3"
+    },
+    {
+        text: "وَرَحْمَتِي وَسِعَتْ كُلَّ شَيْءٍ",
+        reference: "القرآن 7:156"
+    },
+    {
+        text: "إِنَّ الصَّلَاةَ تَنْهَىٰ عَنِ الْفَحْشَاءِ وَالْمُنكَرِ",
+        reference: "القرآن 29:45"
+    },
+    {
+        text: "وَهُوَ مَعَكُمْ أَيْنَ مَا كُنتُمْ",
+        reference: "القرآن 57:4"
+    },
+    {
+        text: "فَاذْكُرُونِي أَذْكُرْكُمْ",
+        reference: "القرآن 2:152"
+    },
+    {
+        text: "وَمَن يَتَّقِ اللَّهَ يَجْعَل لَّهُ مَخْرَجًا",
+        reference: "القرآن 65:2"
+    }
+];
+
+// QURAN FUNCTIONS (API + Fallback)
+async function getQuranVerse() {
+    try {
+        // Try API first (75% chance)
+        if (Math.random() < 0.75) {
+            return await getQuranFromAPI();
+        } else {
+            // Use curated popular surahs (25% chance)
+            return await getCuratedQuranVerse();
+        }
+    } catch (error) {
+        // Fallback to static verses if API fails
+        return getFallbackQuranVerse();
+    }
+}
+
+async function getQuranFromAPI() {
+    try {
+        const response = await axios.get('https://api.alquran.cloud/v1/ayah/random');
+        const verse = response.data.data;
+        return `📖 **آية قرآنية**\n${verse.text}\n*سورة ${verse.surah.englishName} - الآية ${verse.numberInSurah}*`;
+    } catch (error) {
+        throw new Error('API failed');
+    }
+}
+
+async function getCuratedQuranVerse() {
+    const popularSurahs = [
+        { number: 1, name: 'الفاتحة' },
+        { number: 2, name: 'البقرة' }, 
+        { number: 36, name: 'يس' },
+        { number: 55, name: 'الرحمن' },
+        { number: 67, name: 'الملك' },
+        { number: 112, name: 'الإخلاص' }
+    ];
+    
+    const surah = popularSurahs[Math.floor(Math.random() * popularSurahs.length)];
+    
+    try {
+        const response = await axios.get(`https://api.alquran.cloud/v1/surah/${surah.number}/ar`);
+        const verses = response.data.data.ayahs;
+        const randomVerse = verses[Math.floor(Math.random() * Math.min(verses.length, 10))]; // First 10 verses
+        
+        return `📖 **آية قرآنية**\n${randomVerse.text}\n*سورة ${surah.name} - الآية ${randomVerse.numberInSurah}*`;
+    } catch (error) {
+        throw new Error('Curated API failed');
+    }
+}
+
+function getFallbackQuranVerse() {
+    const randomVerse = FALLBACK_QURAN_VERSES[Math.floor(Math.random() * FALLBACK_QURAN_VERSES.length)];
+    return `📖 **آية قرآنية**\n${randomVerse.text}\n*${randomVerse.reference}*`;
+}
+
+// Function to get comprehensive Athkar package
+function getAthkarPackage(isMorning = true) {
+    const athkarList = isMorning ? MORNING_ATHKAR : EVENING_ATHKAR;
+    const time = isMorning ? "Morning" : "Evening";
+    
+    let package = `🕌 **${time} Athkar Package** 🌟\n\n`;
+    
+    athkarList.forEach((thikr, index) => {
+        package += `**${index + 1}. ${thikr.times > 1 ? `(${thikr.times}x)` : ''}**\n`;
+        package += `${thikr.arabic}\n`;
+        package += `*${thikr.transliteration}*\n`;
+        package += `"${thikr.meaning}"\n\n`;
+    });
+    
+    package += `📖 *Recite these ${time.toLowerCase()} Athkar for protection and blessings*`;
+    return package;
+}
+
+// Function to get daily single Athkar
+function getDailyAthkar(isMorning = true) {
+    const athkarList = isMorning ? MORNING_ATHKAR : EVENING_ATHKAR;
+    const randomThikr = athkarList[Math.floor(Math.random() * athkarList.length)];
+    const time = isMorning ? "Morning" : "Evening";
+    
+    return `🕌 **${time} Thikr**\n${randomThikr.arabic}\n*${randomThikr.transliteration}*\n"${randomThikr.meaning}"\n\n*Repeat ${randomThikr.times} time(s) for greater reward*`;
+}
+
 client.once('ready', async () => {
     console.log(`✅ Bot online: ${client.user.tag}`);
     client.user.setActivity('Prayer Reminders', { type: ActivityType.Listening });
     await fetchPrayerTimes();
     scheduleAllTextReminders();
-    console.log('🤖 Bot ready - reminders auto-delete after 24 hours!');
+    scheduleDailyInspiration();
+    console.log('🤖 Bot ready - Quran API & Athkar loaded!');
 });
 
-// Simple command handler
+// MESSAGE HANDLER WITH ALL COMMANDS
 client.on('messageCreate', async (message) => {
     if (message.author.bot) return;
     console.log(`💬 Message: ${message.content}`);
@@ -59,7 +288,6 @@ client.on('messageCreate', async (message) => {
             if (prayersChannel) {
                 prayersChannel.send('🔔 **TEST REMINDER** <@&1439370924003430441>\nThis is a test of the auto-send feature!')
                     .then(sentMessage => {
-                        // Auto-delete test message after 1 minute for testing
                         setTimeout(async () => {
                             try {
                                 if (sentMessage.deletable) {
@@ -69,7 +297,7 @@ client.on('messageCreate', async (message) => {
                             } catch (error) {
                                 console.log('❌ Could not auto-delete test message');
                             }
-                        }, 60000); // 1 minute for testing
+                        }, 60000);
                     });
                 message.channel.send('✅ Test message sent to #prayers channel (will auto-delete in 1 min)!');
             } else {
@@ -88,6 +316,80 @@ client.on('messageCreate', async (message) => {
         scheduleAllTextReminders();
         message.channel.send('🔄 Prayer times refreshed and reminders rescheduled!');
     }
+
+    // HELP COMMAND
+    if (message.content === '!help' || message.content === '!commands') {
+        const helpMessage = `
+🤖 **أوامر بوت التذكير بالصلاة** 🕌
+
+**أوقات الصلاة:**
+\`!prayertimes\` - عرض أوقات الصلاة اليوم
+\`!refreshtimes\` - تحديث أوقات الصلاة من API
+
+**الأذكار والقرآن:**
+\`!morning\` - أذكار الصباح
+\`!evening\` - أذكار المساء
+\`!morningpackage\` - باقة أذكار الصباح الكاملة
+\`!eveningpackage\` - باقة أذكار المساء الكاملة
+\`!quran\` - آية قرآنية عشوائية (API + احتياطي)
+\`!inspire\` - آية قرآنية أو ذكر عشوائي
+
+**الأوامر التجريبية:**
+\`!test\` - فحص عمل البوت
+\`!testreminder\` - اختبار نظام التذكير
+\`!autosend5\` - اختبار الإرسال التلقائي
+
+**الميزات التلقائية:**
+- 🕘 تذكير قبل الصلاة بـ 5 دقائق
+- ⏰ تنبيه بوقت الصلاة مع منشن
+- 📋 تسجيل الحضور بعد الصلاة بـ 15 دقيقة
+- 🌅 أذكار الصباح الساعة 6:00 ص
+- 🌇 أذكار المساء الساعة 6:00 م
+- 📖 آية قرآنية الساعة 12:00 ظ
+
+*جميع رسائل الأذكار تحذف تلقائياً عند منتصف الليل*
+        `;
+        
+        message.channel.send(helpMessage);
+    }
+
+    // ATHKAR & QURAN COMMANDS
+    if (message.content === '!morning') {
+        const athkar = getDailyAthkar(true);
+        message.channel.send(athkar);
+    }
+
+    if (message.content === '!evening') {
+        const athkar = getDailyAthkar(false);
+        message.channel.send(athkar);
+    }
+
+    if (message.content === '!morningpackage') {
+        const package = getAthkarPackage(true);
+        message.channel.send(package);
+    }
+
+    if (message.content === '!eveningpackage') {
+        const package = getAthkarPackage(false);
+        message.channel.send(package);
+    }
+
+    if (message.content === '!quran') {
+        const verse = await getQuranVerse();
+        message.channel.send(verse);
+    }
+
+    if (message.content === '!inspire') {
+        const now = new Date();
+        const isMorning = now.getHours() < 12;
+        
+        if (Math.random() > 0.5) {
+            const verse = await getQuranVerse();
+            message.channel.send(verse);
+        } else {
+            message.channel.send(getDailyAthkar(isMorning));
+        }
+    }
 });
 
 // UPDATED: Function to send text reminders with auto-delete
@@ -102,13 +404,10 @@ function sendPrayerReminderToAllChannels(prayerName, message, shouldPing = false
         );
 
         if (prayersChannel) {
-            // ONLY PING IF shouldPing is true
             const roleMention = shouldPing ? `<@&1439370924003430441>` : '';
             
-            // Send message and auto-delete after 24 hours
             prayersChannel.send(`🕌 **${message}** ${roleMention}\n⏰ ${prayerName} prayer time reminder!`)
                 .then(sentMessage => {
-                    // Auto-delete after 24 hours (86400000 ms)
                     setTimeout(async () => {
                         try {
                             if (sentMessage.deletable) {
@@ -118,7 +417,7 @@ function sendPrayerReminderToAllChannels(prayerName, message, shouldPing = false
                         } catch (error) {
                             console.log('❌ Could not auto-delete message:', error.message);
                         }
-                    }, 24 * 60 * 60 * 1000); // 24 hours
+                    }, 24 * 60 * 60 * 1000);
                 })
                 .catch(error => {
                     console.error('❌ Error sending message:', error);
@@ -129,6 +428,90 @@ function sendPrayerReminderToAllChannels(prayerName, message, shouldPing = false
             console.log(`❌ #prayers channel not found or no permission`);
         }
     });
+}
+
+// ADD: Function to send Athkar with auto-delete at midnight
+function sendAthkarWithAutoDelete(messageContent, isMorning = true) {
+    const time = isMorning ? "Morning" : "Evening";
+    console.log(`🕌 Sending ${time} Athkar with auto-delete at midnight`);
+    
+    client.guilds.cache.forEach(guild => {
+        const prayersChannel = guild.channels.cache.find(channel => 
+            channel.name === 'prayers' && 
+            channel.isTextBased() &&
+            channel.permissionsFor(guild.members.me).has('SendMessages')
+        );
+
+        if (prayersChannel) {
+            prayersChannel.send(messageContent)
+                .then(sentMessage => {
+                    // Calculate time until midnight (24:00)
+                    const now = new Date();
+                    const midnight = new Date();
+                    midnight.setHours(24, 0, 0, 0);
+                    const timeUntilMidnight = midnight.getTime() - now.getTime();
+                    
+                    setTimeout(async () => {
+                        try {
+                            if (sentMessage.deletable) {
+                                await sentMessage.delete();
+                                console.log(`🗑️ Auto-deleted ${time} Athkar at midnight`);
+                            }
+                        } catch (error) {
+                            console.log(`❌ Could not auto-delete ${time} Athkar:`, error.message);
+                        }
+                    }, timeUntilMidnight);
+                })
+                .catch(error => {
+                    console.error('❌ Error sending Athkar:', error);
+                });
+        }
+    });
+}
+
+// ADD: Schedule daily inspiration with auto-delete
+function scheduleDailyInspiration() {
+    // Morning Athkar at 6:00 AM - auto-delete at midnight
+    cron.schedule('0 6 * * *', () => {
+        const morningAthkar = getDailyAthkar(true);
+        sendAthkarWithAutoDelete(`🌅 **Good Morning!**\n${morningAthkar}`, true);
+    }, {
+        timezone: CONFIG.TIMEZONE
+    });
+
+    // Evening Athkar at 6:00 PM - auto-delete at midnight
+    cron.schedule('0 18 * * *', () => {
+        const eveningAthkar = getDailyAthkar(false);
+        sendAthkarWithAutoDelete(`🌇 **Good Evening!**\n${eveningAthkar}`, false);
+    }, {
+        timezone: CONFIG.TIMEZONE
+    });
+
+    // Quran verse at 12:00 PM - auto-delete at midnight
+    cron.schedule('0 12 * * *', async () => {
+        const verse = await getQuranVerse();
+        sendAthkarWithAutoDelete(verse);
+    }, {
+        timezone: CONFIG.TIMEZONE
+    });
+
+    // Full Morning Package at 7:00 AM on Fridays
+    cron.schedule('0 7 * * 5', () => {
+        const morningPackage = getAthkarPackage(true);
+        sendAthkarWithAutoDelete(`📖 **Friday Morning Athkar Package** ✨\n${morningPackage}`, true);
+    }, {
+        timezone: CONFIG.TIMEZONE
+    });
+
+    // Full Evening Package at 19:30 PM on Sundays
+    cron.schedule('30 19 * * 0', () => {
+        const eveningPackage = getAthkarPackage(false);
+        sendAthkarWithAutoDelete(`📖 **Sunday Evening Athkar Package** ✨\n${eveningPackage}`, false);
+    }, {
+        timezone: CONFIG.TIMEZONE
+    });
+
+    console.log('📅 Scheduled daily inspiration with auto-delete at midnight');
 }
 
 function scheduleAllTextReminders() {
@@ -166,10 +549,22 @@ function scheduleTextReminders(prayerName, prayerTimeStr) {
         }
     };
     
-    // ONLY PING AT EXACT PRAYER TIME
-    scheduleReminder(-5, `${prayerName} prayer in 5 minutes`, false); // No ping
-    scheduleReminder(0, `${prayerName} prayer time now`, true);      // PING HERE
-    scheduleReminder(10, `${prayerName} prayer was 10 minutes ago`, false); // No ping
+    scheduleReminder(-5, `${prayerName} prayer in 5 minutes`, false);
+    scheduleReminder(0, `${prayerName} prayer time now`, true);
+    scheduleReminder(10, `${prayerName} prayer was 10 minutes ago`, false);
+    
+    // Schedule check-in (15 minutes after prayer)
+    const checkInTime = new Date(prayerDate.getTime() + 15 * 60 * 1000);
+    const checkInDelay = checkInTime.getTime() - Date.now();
+
+    if (checkInDelay > 0) {
+        const checkInTimeout = setTimeout(() => {
+            sendPrayerCheckIn(prayerName);
+        }, checkInDelay);
+        
+        scheduledTextReminders.set(`${prayerName}_checkin`, checkInTimeout);
+        console.log(`📅 Scheduled ${prayerName} check-in at ${checkInTime.toLocaleString()}`);
+    }
 }
 
 async function fetchPrayerTimes() {
@@ -205,4 +600,46 @@ async function fetchPrayerTimes() {
     }
 }
 
-client.login(process.env.DISCORD_TOKEN);
+// ADD: Function to send prayer check-in with reactions
+async function sendPrayerCheckIn(prayerName) {
+    console.log(`✅ Sending check-in for ${prayerName}`);
+    
+    client.guilds.cache.forEach(async (guild) => {
+        const prayersChannel = guild.channels.cache.find(channel => 
+            channel.name === 'prayers' && 
+            channel.isTextBased() &&
+            channel.permissionsFor(guild.members.me).has(['SendMessages', 'AddReactions'])
+        );
+
+        if (prayersChannel) {
+            try {
+                const checkInMessage = await prayersChannel.send(
+                    `📋 **${prayerName} Prayer Check-in**\n` +
+                    `Did you pray ${prayerName}? React below!\n` +
+                    `✅ = I prayed\n⏰ = I'll pray later\n🕌 = Need reminder`
+                );
+                
+                await checkInMessage.react('✅');
+                await checkInMessage.react('⏰');
+                await checkInMessage.react('🕌');
+                
+                setTimeout(async () => {
+                    try {
+                        if (checkInMessage.deletable) {
+                            await checkInMessage.delete();
+                            console.log(`🗑️ Auto-deleted ${prayerName} check-in`);
+                        }
+                    } catch (error) {
+                        console.log('❌ Could not auto-delete check-in');
+                    }
+                }, 2 * 60 * 60 * 1000);
+                
+            } catch (error) {
+                console.error('❌ Error sending check-in:', error);
+            }
+        }
+    });
+}
+
+// ADD: Track reactions to check-in messages
+client.on('messageReactionAdd
