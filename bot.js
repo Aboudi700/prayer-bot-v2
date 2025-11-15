@@ -28,7 +28,7 @@ client.once('ready', async () => {
     client.user.setActivity('Prayer Reminders', { type: ActivityType.Listening });
     await fetchPrayerTimes();
     scheduleAllTextReminders();
-    console.log('🤖 Bot ready with text reminders!');
+    console.log('🤖 Bot ready with text reminders to #prayers channel!');
 });
 
 // Simple command handler
@@ -50,11 +50,20 @@ client.on('messageCreate', async (message) => {
 
     // NEW: Test auto-send in 5 seconds
     if (message.content === '!autosend5') {
-        message.channel.send('⏰ Test message will be sent in 5 seconds...');
+        message.channel.send('⏰ Test message will be sent to #prayers channel in 5 seconds...');
         
         setTimeout(() => {
-            // USING YOUR ROLE ID
-            message.channel.send('🔔 **TEST REMINDER** <@&1439370924003430441>\nThis is a test of the auto-send feature!');
+            // Find #prayers channel and send test there
+            const prayersChannel = message.guild.channels.cache.find(channel => 
+                channel.name === 'prayers' && channel.isTextBased()
+            );
+            
+            if (prayersChannel) {
+                prayersChannel.send('🔔 **TEST REMINDER** <@&1439370924003430441>\nThis is a test of the auto-send feature!');
+                message.channel.send('✅ Test message sent to #prayers channel!');
+            } else {
+                message.channel.send('❌ #prayers channel not found!');
+            }
         }, 5000);
     }
 
@@ -71,24 +80,28 @@ client.on('messageCreate', async (message) => {
     }
 });
 
-// FIXED: Function to send text reminders to all channels
+// UPDATED: Function to send text reminders only to #prayers channel
 function sendPrayerReminderToAllChannels(prayerName, message) {
     console.log(`📢 Sending text reminder: ${message}`);
     
     client.guilds.cache.forEach(guild => {
-        // Find text channels where bot can send messages
-        const textChannels = guild.channels.cache.filter(channel => 
-            channel.isTextBased() && 
+        // Find ONLY the #prayers channel
+        const prayersChannel = guild.channels.cache.find(channel => 
+            channel.name === 'prayers' && 
+            channel.isTextBased() &&
             channel.permissionsFor(guild.members.me).has('SendMessages')
         );
 
-        textChannels.forEach(channel => {
+        if (prayersChannel) {
             // USING YOUR ROLE ID: 1439370924003430441
             const roleMention = guild.roles.cache.get("1439370924003430441");
             const mention = roleMention ? `<@&${roleMention.id}>` : '@everyone';
             
-            channel.send(`🕌 **${message}** ${mention}\n⏰ ${prayerName} prayer time reminder!`);
-        });
+            prayersChannel.send(`🕌 **${message}** ${mention}\n⏰ ${prayerName} prayer time reminder!`);
+            console.log(`✅ Sent reminder to #prayers channel`);
+        } else {
+            console.log(`❌ #prayers channel not found or no permission`);
+        }
     });
 }
 
