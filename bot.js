@@ -53,8 +53,8 @@ client.on('messageCreate', async (message) => {
         message.channel.send('⏰ Test message will be sent in 5 seconds...');
         
         setTimeout(() => {
-            // Using Prayer-ping role
-            message.channel.send('🔔 **TEST REMINDER** <@&Prayer-ping>\nThis is a test of the auto-send feature!');
+            // USING YOUR ROLE ID
+            message.channel.send('🔔 **TEST REMINDER** <@&1439370924003430441>\nThis is a test of the auto-send feature!');
         }, 5000);
     }
 
@@ -71,7 +71,7 @@ client.on('messageCreate', async (message) => {
     }
 });
 
-// NEW: Function to send text reminders to all channels
+// FIXED: Function to send text reminders to all channels
 function sendPrayerReminderToAllChannels(prayerName, message) {
     console.log(`📢 Sending text reminder: ${message}`);
     
@@ -83,8 +83,8 @@ function sendPrayerReminderToAllChannels(prayerName, message) {
         );
 
         textChannels.forEach(channel => {
-            // Using "Prayer-ping" role
-            const roleMention = guild.roles.cache.find(role => role.name === "Prayer-ping");
+            // USING YOUR ROLE ID: 1439370924003430441
+            const roleMention = guild.roles.cache.get("1439370924003430441");
             const mention = roleMention ? `<@&${roleMention.id}>` : '@everyone';
             
             channel.send(`🕌 **${message}** ${mention}\n⏰ ${prayerName} prayer time reminder!`);
