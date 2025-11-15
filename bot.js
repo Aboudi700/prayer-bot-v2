@@ -2,8 +2,6 @@ const { Client, GatewayIntentBits, ActivityType } = require('discord.js');
 const { joinVoiceChannel, createAudioPlayer, createAudioResource, VoiceConnectionStatus, entersState } = require('@discordjs/voice');
 const axios = require('axios');
 const cron = require('node-cron');
-const path = require('path');
-const fs = require('fs');
 
 const client = new Client({
     intents: [
@@ -48,7 +46,7 @@ client.on('messageCreate', async (message) => {
         message.channel.send('✅ Bot is working!');
     }
 
-    // ADDED: Test voice channel command
+    // SIMPLIFIED: Test voice channel command
     if (message.content === '!testvc') {
         console.log('Testing voice channel join...');
         const voiceChannel = message.member?.voice.channel;
@@ -58,56 +56,29 @@ client.on('messageCreate', async (message) => {
         }
         
         try {
-            await playReminderInChannel(voiceChannel, 'TEST: Bot voice feature working!');
-            message.channel.send('✅ Bot joined voice channel successfully!');
+            // Simple voice connection test
+            const connection = joinVoiceChannel({
+                channelId: voiceChannel.id,
+                guildId: voiceChannel.guild.id,
+                adapterCreator: voiceChannel.guild.voiceAdapterCreator,
+            });
+            
+            console.log('✅ Successfully joined voice channel');
+            message.channel.send('✅ Bot joined voice channel!');
+            
+            // Leave after 2 seconds
+            setTimeout(() => {
+                connection.destroy();
+                console.log('✅ Left voice channel');
+                message.channel.send('✅ Bot left voice channel - Voice features working!');
+            }, 2000);
+            
         } catch (error) {
-            console.error('Test VC error:', error);
-            message.channel.send('❌ Failed to join voice channel');
+            console.error('❌ Voice channel error:', error);
+            message.channel.send('❌ Failed to join voice channel: ' + error.message);
         }
     }
 });
-
-// ADDED: Function to play reminder in voice channel
-async function playReminderInChannel(voiceChannel, message) {
-    try {
-        console.log(`Joining voice channel: ${voiceChannel.name}`);
-        
-        // Join the voice channel
-        const connection = joinVoiceChannel({
-            channelId: voiceChannel.id,
-            guildId: voiceChannel.guild.id,
-            adapterCreator: voiceChannel.guild.voiceAdapterCreator,
-        });
-
-        // Wait for connection to be ready
-        await entersState(connection, VoiceConnectionStatus.Ready, 30_000);
-        
-        // Subscribe to the audio player
-        const subscription = connection.subscribe(player);
-        
-        if (subscription) {
-            console.log('Attempting to play audio...');
-            
-            // For testing, we'll just join and leave since we don't have MP3 files on Railway
-            // In a real scenario, this would play the adhan sound
-            
-            // Leave after a short time
-            setTimeout(() => {
-                connection.destroy();
-                console.log('Left voice channel');
-            }, 3000);
-        }
-
-        // Handle connection disruptions
-        connection.on(VoiceConnectionStatus.Disconnected, async () => {
-            connection.destroy();
-        });
-
-    } catch (error) {
-        console.error('Error joining voice channel:', error);
-        throw error;
-    }
-}
 
 async function fetchPrayerTimes() {
     try {
