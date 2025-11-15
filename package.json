@@ -1,0 +1,15 @@
+{
+  "name": "islamic-prayer-reminder-bot",
+  "version": "1.0.0",
+  "description": "Discord bot for Islamic prayer reminders",
+  "main": "bot.js",
+  "scripts": {
+    "start": "node bot.js"
+  },
+  "dependencies": {
+    "discord.js": "^14.14.1",
+    "@discordjs/voice": "^0.16.1",
+    "axios": "^1.0.0",
+    "node-cron": "^3.0.0"
+  }
+}
