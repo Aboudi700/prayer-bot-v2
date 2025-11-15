@@ -642,4 +642,26 @@ async function sendPrayerCheckIn(prayerName) {
 }
 
 // ADD: Track reactions to check-in messages
-client.on('messageReactionAdd
+client.on('messageReactionAdd', async (reaction, user) => {
+    if (user.bot) return;
+    
+    if (reaction.message.partial) {
+        try {
+            await reaction.message.fetch();
+        } catch (error) {
+            console.error('Failed to fetch message:', error);
+            return;
+        }
+    }
+    
+    const message = reaction.message;
+    
+    if (message.content.includes('Prayer Check-in')) {
+        const prayerName = message.content.split(' ')[0];
+        const emoji = reaction.emoji.name;
+        
+        console.log(`📊 ${user.username} reacted ${emoji} to ${prayerName} check-in`);
+    }
+});
+
+client.login(process.env.DISCORD_TOKEN);
