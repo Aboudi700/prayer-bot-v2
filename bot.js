@@ -21,12 +21,14 @@ const CONFIG = {
 
 const player = createAudioPlayer();
 let currentPrayerTimes = {};
+let scheduledTextReminders = new Map();
 
 client.once('ready', async () => {
     console.log(`✅ Bot online: ${client.user.tag}`);
     client.user.setActivity('Prayer Reminders', { type: ActivityType.Listening });
     await fetchPrayerTimes();
-    console.log('🤖 Bot ready!');
+    scheduleAllTextReminders();
+    console.log('🤖 Bot ready with text reminders!');
 });
 
 // Simple command handler
@@ -46,62 +48,95 @@ client.on('messageCreate', async (message) => {
         message.channel.send('✅ Bot is working!');
     }
 
-    if (message.content === '!testvc') {
-        console.log('🔄 Testing voice channel join...');
-        const voiceChannel = message.member?.voice.channel;
+    // NEW: Test auto-send in 5 seconds
+    if (message.content === '!autosend5') {
+        message.channel.send('⏰ Test message will be sent in 5 seconds...');
         
-        if (!voiceChannel) {
-            return message.channel.send('❌ Please join a voice channel first!');
-        }
-        
-        console.log(`🎯 Attempting to join: ${voiceChannel.name} (${voiceChannel.id})`);
-        message.channel.send(`🎯 Attempting to join: **${voiceChannel.name}**`);
-        
-        try {
-            // Join voice channel
-            const connection = joinVoiceChannel({
-                channelId: voiceChannel.id,
-                guildId: voiceChannel.guild.id,
-                adapterCreator: voiceChannel.guild.voiceAdapterCreator,
-            });
-            
-            console.log('✅ Voice connection created');
-            message.channel.send('✅ Voice connection created!');
-            
-            // Listen for connection events
-            connection.on(VoiceConnectionStatus.Ready, () => {
-                console.log('🎉 SUCCESS: Bot is now in voice channel!');
-                message.channel.send('🎉 **SUCCESS: Bot is now in voice channel!**');
-            });
-            
-            connection.on(VoiceConnectionStatus.Disconnected, () => {
-                console.log('🔌 Bot disconnected from voice channel');
-                message.channel.send('🔌 Bot disconnected from voice channel');
-            });
-            
-            connection.on('error', (error) => {
-                console.error('❌ Voice connection error:', error);
-                message.channel.send('❌ Voice connection error: ' + error.message);
-            });
-            
-            // Stay for 10 seconds so you can definitely see it
-            setTimeout(() => {
-                console.log('🔄 Leaving voice channel...');
-                connection.destroy();
-                message.channel.send('✅ Bot left voice channel');
-            }, 10000); // 10 seconds
-            
-        } catch (error) {
-            console.error('❌ Voice channel error:', error);
-            message.channel.send('❌ Failed to join voice channel: ' + error.message);
-        }
+        setTimeout(() => {
+            // Using Prayer-ping role
+            message.channel.send('🔔 **TEST REMINDER** <@&Prayer-ping>\nThis is a test of the auto-send feature!');
+        }, 5000);
+    }
+
+    // NEW: Test prayer reminder now
+    if (message.content === '!testreminder') {
+        message.channel.send('🔄 Testing prayer reminder system...');
+        sendPrayerReminderToAllChannels('Fajr', 'TEST: Prayer reminder working!');
     }
 
     if (message.content === '!refreshtimes') {
         await fetchPrayerTimes();
-        message.channel.send('🔄 Prayer times refreshed from API!');
+        scheduleAllTextReminders(); // Reschedule with new times
+        message.channel.send('🔄 Prayer times refreshed and reminders rescheduled!');
     }
 });
+
+// NEW: Function to send text reminders to all channels
+function sendPrayerReminderToAllChannels(prayerName, message) {
+    console.log(`📢 Sending text reminder: ${message}`);
+    
+    client.guilds.cache.forEach(guild => {
+        // Find text channels where bot can send messages
+        const textChannels = guild.channels.cache.filter(channel => 
+            channel.isTextBased() && 
+            channel.permissionsFor(guild.members.me).has('SendMessages')
+        );
+
+        textChannels.forEach(channel => {
+            // Using "Prayer-ping" role
+            const roleMention = guild.roles.cache.find(role => role.name === "Prayer-ping");
+            const mention = roleMention ? `<@&${roleMention.id}>` : '@everyone';
+            
+            channel.send(`🕌 **${message}** ${mention}\n⏰ ${prayerName} prayer time reminder!`);
+        });
+    });
+}
+
+// NEW: Schedule text reminders for all prayers
+function scheduleAllTextReminders() {
+    // Clear existing reminders
+    scheduledTextReminders.forEach(timeout => clearTimeout(timeout));
+    scheduledTextReminders.clear();
+    
+    console.log('📅 Scheduling text reminders...');
+    
+    for (const [prayerName, prayerTime] of Object.entries(currentPrayerTimes)) {
+        scheduleTextReminders(prayerName, prayerTime);
+    }
+}
+
+// NEW: Schedule the three text reminders for each prayer
+function scheduleTextReminders(prayerName, prayerTimeStr) {
+    const [hours, minutes] = prayerTimeStr.split(':').map(Number);
+    const now = new Date();
+    const prayerDate = new Date();
+    prayerDate.setHours(hours, minutes, 0, 0);
+    
+    // If prayer time has already passed today, schedule for tomorrow
+    if (prayerDate < now) {
+        prayerDate.setDate(prayerDate.getDate() + 1);
+    }
+    
+    // Helper function to schedule a single text reminder
+    const scheduleReminder = (offsetMinutes, message) => {
+        const reminderTime = new Date(prayerDate.getTime() + offsetMinutes * 60 * 1000);
+        const delay = reminderTime.getTime() - Date.now();
+        
+        if (delay > 0) {
+            const timeout = setTimeout(() => {
+                sendPrayerReminderToAllChannels(prayerName, message);
+            }, delay);
+            
+            scheduledTextReminders.set(`${prayerName}_${offsetMinutes}`, timeout);
+            console.log(`📅 Scheduled ${prayerName} text reminder: ${message} at ${reminderTime.toLocaleString()}`);
+        }
+    };
+    
+    // Schedule all three text reminders
+    scheduleReminder(-5, `${prayerName} prayer in 5 minutes`);
+    scheduleReminder(0, `${prayerName} prayer time now`);
+    scheduleReminder(10, `${prayerName} prayer was 10 minutes ago`);
+}
 
 async function fetchPrayerTimes() {
     try {
