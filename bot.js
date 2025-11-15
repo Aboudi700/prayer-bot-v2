@@ -28,7 +28,7 @@ client.once('ready', async () => {
     client.user.setActivity('Prayer Reminders', { type: ActivityType.Listening });
     await fetchPrayerTimes();
     scheduleAllTextReminders();
-    console.log('🤖 Bot ready with text reminders to #prayers channel!');
+    console.log('🤖 Bot ready - reminders auto-delete after 24 hours!');
 });
 
 // Simple command handler
@@ -48,44 +48,53 @@ client.on('messageCreate', async (message) => {
         message.channel.send('✅ Bot is working!');
     }
 
-    // NEW: Test auto-send in 5 seconds
     if (message.content === '!autosend5') {
         message.channel.send('⏰ Test message will be sent to #prayers channel in 5 seconds...');
         
         setTimeout(() => {
-            // Find #prayers channel and send test there
             const prayersChannel = message.guild.channels.cache.find(channel => 
                 channel.name === 'prayers' && channel.isTextBased()
             );
             
             if (prayersChannel) {
-                prayersChannel.send('🔔 **TEST REMINDER** <@&1439370924003430441>\nThis is a test of the auto-send feature!');
-                message.channel.send('✅ Test message sent to #prayers channel!');
+                prayersChannel.send('🔔 **TEST REMINDER** <@&1439370924003430441>\nThis is a test of the auto-send feature!')
+                    .then(sentMessage => {
+                        // Auto-delete test message after 1 minute for testing
+                        setTimeout(async () => {
+                            try {
+                                if (sentMessage.deletable) {
+                                    await sentMessage.delete();
+                                    console.log('🗑️ Auto-deleted test message');
+                                }
+                            } catch (error) {
+                                console.log('❌ Could not auto-delete test message');
+                            }
+                        }, 60000); // 1 minute for testing
+                    });
+                message.channel.send('✅ Test message sent to #prayers channel (will auto-delete in 1 min)!');
             } else {
                 message.channel.send('❌ #prayers channel not found!');
             }
         }, 5000);
     }
 
-    // NEW: Test prayer reminder now
     if (message.content === '!testreminder') {
         message.channel.send('🔄 Testing prayer reminder system...');
-        sendPrayerReminderToAllChannels('Fajr', 'TEST: Prayer reminder working!');
+        sendPrayerReminderToAllChannels('Fajr', 'TEST: Prayer reminder working!', true);
     }
 
     if (message.content === '!refreshtimes') {
         await fetchPrayerTimes();
-        scheduleAllTextReminders(); // Reschedule with new times
+        scheduleAllTextReminders();
         message.channel.send('🔄 Prayer times refreshed and reminders rescheduled!');
     }
 });
 
-// UPDATED: Function to send text reminders only to #prayers channel
-function sendPrayerReminderToAllChannels(prayerName, message) {
-    console.log(`📢 Sending text reminder: ${message}`);
+// UPDATED: Function to send text reminders with auto-delete
+function sendPrayerReminderToAllChannels(prayerName, message, shouldPing = false) {
+    console.log(`📢 Sending text reminder: ${message} (ping: ${shouldPing})`);
     
     client.guilds.cache.forEach(guild => {
-        // Find ONLY the #prayers channel
         const prayersChannel = guild.channels.cache.find(channel => 
             channel.name === 'prayers' && 
             channel.isTextBased() &&
@@ -93,21 +102,36 @@ function sendPrayerReminderToAllChannels(prayerName, message) {
         );
 
         if (prayersChannel) {
-            // USING YOUR ROLE ID: 1439370924003430441
-            const roleMention = guild.roles.cache.get("1439370924003430441");
-            const mention = roleMention ? `<@&${roleMention.id}>` : '@everyone';
+            // ONLY PING IF shouldPing is true
+            const roleMention = shouldPing ? `<@&1439370924003430441>` : '';
             
-            prayersChannel.send(`🕌 **${message}** ${mention}\n⏰ ${prayerName} prayer time reminder!`);
-            console.log(`✅ Sent reminder to #prayers channel`);
+            // Send message and auto-delete after 24 hours
+            prayersChannel.send(`🕌 **${message}** ${roleMention}\n⏰ ${prayerName} prayer time reminder!`)
+                .then(sentMessage => {
+                    // Auto-delete after 24 hours (86400000 ms)
+                    setTimeout(async () => {
+                        try {
+                            if (sentMessage.deletable) {
+                                await sentMessage.delete();
+                                console.log(`🗑️ Auto-deleted reminder: ${message}`);
+                            }
+                        } catch (error) {
+                            console.log('❌ Could not auto-delete message:', error.message);
+                        }
+                    }, 24 * 60 * 60 * 1000); // 24 hours
+                })
+                .catch(error => {
+                    console.error('❌ Error sending message:', error);
+                });
+            
+            console.log(`✅ Sent reminder to #prayers channel (ping: ${shouldPing}) - will auto-delete in 24h`);
         } else {
             console.log(`❌ #prayers channel not found or no permission`);
         }
     });
 }
 
-// NEW: Schedule text reminders for all prayers
 function scheduleAllTextReminders() {
-    // Clear existing reminders
     scheduledTextReminders.forEach(timeout => clearTimeout(timeout));
     scheduledTextReminders.clear();
     
@@ -118,26 +142,23 @@ function scheduleAllTextReminders() {
     }
 }
 
-// NEW: Schedule the three text reminders for each prayer
 function scheduleTextReminders(prayerName, prayerTimeStr) {
     const [hours, minutes] = prayerTimeStr.split(':').map(Number);
     const now = new Date();
     const prayerDate = new Date();
     prayerDate.setHours(hours, minutes, 0, 0);
     
-    // If prayer time has already passed today, schedule for tomorrow
     if (prayerDate < now) {
         prayerDate.setDate(prayerDate.getDate() + 1);
     }
     
-    // Helper function to schedule a single text reminder
-    const scheduleReminder = (offsetMinutes, message) => {
+    const scheduleReminder = (offsetMinutes, message, shouldPing) => {
         const reminderTime = new Date(prayerDate.getTime() + offsetMinutes * 60 * 1000);
         const delay = reminderTime.getTime() - Date.now();
         
         if (delay > 0) {
             const timeout = setTimeout(() => {
-                sendPrayerReminderToAllChannels(prayerName, message);
+                sendPrayerReminderToAllChannels(prayerName, message, shouldPing);
             }, delay);
             
             scheduledTextReminders.set(`${prayerName}_${offsetMinutes}`, timeout);
@@ -145,10 +166,10 @@ function scheduleTextReminders(prayerName, prayerTimeStr) {
         }
     };
     
-    // Schedule all three text reminders
-    scheduleReminder(-5, `${prayerName} prayer in 5 minutes`);
-    scheduleReminder(0, `${prayerName} prayer time now`);
-    scheduleReminder(10, `${prayerName} prayer was 10 minutes ago`);
+    // ONLY PING AT EXACT PRAYER TIME
+    scheduleReminder(-5, `${prayerName} prayer in 5 minutes`, false); // No ping
+    scheduleReminder(0, `${prayerName} prayer time now`, true);      // PING HERE
+    scheduleReminder(10, `${prayerName} prayer was 10 minutes ago`, false); // No ping
 }
 
 async function fetchPrayerTimes() {
