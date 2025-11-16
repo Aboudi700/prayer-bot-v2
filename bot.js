@@ -614,9 +614,13 @@ function scheduleAllTextReminders() {
 
 function scheduleTextReminders(prayerName, prayerTimeStr) {
     const [hours, minutes] = prayerTimeStr.split(':').map(Number);
+    
+    // Use Saudi Arabia timezone explicitly
     const now = new Date();
-    const prayerDate = new Date();
+    const prayerDate = new Date(now.toLocaleString("en-US", {timeZone: "Asia/Riyadh"}));
     prayerDate.setHours(hours, minutes, 0, 0);
+    
+    console.log(`🕒 DEBUG: ${prayerName} at ${prayerTimeStr} -> ${prayerDate.toLocaleString()}`);
     
     if (prayerDate < now) {
         prayerDate.setDate(prayerDate.getDate() + 1);
@@ -626,32 +630,20 @@ function scheduleTextReminders(prayerName, prayerTimeStr) {
         const reminderTime = new Date(prayerDate.getTime() + offsetMinutes * 60 * 1000);
         const delay = reminderTime.getTime() - Date.now();
         
+        console.log(`🕒 ${prayerName} reminder: ${message} at ${reminderTime.toLocaleString()} (in ${Math.round(delay/1000/60)} minutes)`);
+        
         if (delay > 0) {
             const timeout = setTimeout(() => {
                 sendPrayerReminderToAllChannels(prayerName, message, shouldPing);
             }, delay);
             
             scheduledTextReminders.set(`${prayerName}_${offsetMinutes}`, timeout);
-            console.log(`📅 Scheduled ${prayerName} text reminder: ${message} at ${reminderTime.toLocaleString()}`);
         }
     };
     
     scheduleReminder(-5, `${prayerName} prayer in 5 minutes`, false);
     scheduleReminder(0, `${prayerName} prayer time now`, true);
     scheduleReminder(10, `${prayerName} prayer was 10 minutes ago`, false);
-    
-    // Schedule check-in (15 minutes after prayer)
-    const checkInTime = new Date(prayerDate.getTime() + 15 * 60 * 1000);
-    const checkInDelay = checkInTime.getTime() - Date.now();
-
-    if (checkInDelay > 0) {
-        const checkInTimeout = setTimeout(() => {
-            sendPrayerCheckIn(prayerName);
-        }, checkInDelay);
-        
-        scheduledTextReminders.set(`${prayerName}_checkin`, checkInTimeout);
-        console.log(`📅 Scheduled ${prayerName} check-in at ${checkInTime.toLocaleString()}`);
-    }
 }
 
 async function fetchPrayerTimes() {
@@ -662,6 +654,8 @@ async function fetchPrayerTimes() {
         
         const response = await axios.get(apiUrl);
         const timings = response.data.data.timings;
+        
+        console.log('🔍 DEBUG - Raw API response times:', timings);
         
         currentPrayerTimes = {
             Fajr: timings.Fajr,
@@ -686,7 +680,6 @@ async function fetchPrayerTimes() {
         return currentPrayerTimes;
     }
 }
-
 // ADD: Function to send prayer check-in with reactions
 async function sendPrayerCheckIn(prayerName) {
     console.log(`✅ Sending check-in for ${prayerName}`);
