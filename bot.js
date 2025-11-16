@@ -217,10 +217,13 @@ function getDailyAthkar(isMorning = true) {
            `*كرر ${randomThikr.times} مرة للثواب الأعظم*`;
 }
 
-// NEW: Function to get next prayer time
+// FIXED: Function to get next prayer time with proper timezone handling
 function getNextPrayer() {
     const now = new Date();
-    const currentTime = now.getHours() * 60 + now.getMinutes(); // Convert to minutes
+    
+    // Convert to Saudi Arabia timezone properly
+    const saudiTime = new Date(now.toLocaleString("en-US", {timeZone: "Asia/Riyadh"}));
+    const currentTime = saudiTime.getHours() * 60 + saudiTime.getMinutes(); // Convert to minutes
     
     const prayerTimes = [
         { name: 'Fajr', time: currentPrayerTimes.Fajr },
@@ -230,12 +233,13 @@ function getNextPrayer() {
         { name: 'Isha', time: currentPrayerTimes.Isha }
     ];
     
-    // Convert prayer times to minutes
+    // Convert prayer times to minutes (assuming 24-hour format from API)
     const prayerMinutes = prayerTimes.map(prayer => {
         const [hours, minutes] = prayer.time.split(':').map(Number);
         return {
             name: prayer.name,
-            minutes: hours * 60 + minutes
+            minutes: hours * 60 + minutes,
+            time: prayer.time
         };
     });
     
@@ -248,10 +252,13 @@ function getNextPrayer() {
         }
     }
     
-    // If no prayer found today, use first prayer tomorrow
+    // If no prayer found today, use first prayer tomorrow (Fajr)
     if (!nextPrayer) {
-        nextPrayer = prayerMinutes[0];
-        nextPrayer.minutes += 24 * 60; // Add 24 hours
+        nextPrayer = {
+            name: 'Fajr',
+            minutes: prayerMinutes[0].minutes + (24 * 60), // Add 24 hours
+            time: prayerMinutes[0].time
+        };
     }
     
     // Calculate time difference
@@ -259,11 +266,33 @@ function getNextPrayer() {
     const hoursLeft = Math.floor(timeDiff / 60);
     const minutesLeft = timeDiff % 60;
     
+    // Format the time display
+    let timeDisplay = '';
+    if (hoursLeft > 0 && minutesLeft > 0) {
+        timeDisplay = `${hoursLeft} hours ${minutesLeft} minutes`;
+    } else if (hoursLeft > 0) {
+        timeDisplay = `${hoursLeft} hours`;
+    } else {
+        timeDisplay = `${minutesLeft} minutes`;
+    }
+    
+    // Add appropriate message based on time left
+    let statusMessage = '';
+    if (hoursLeft > 1) {
+        statusMessage = 'Relax and prepare!';
+    } else if (hoursLeft > 0 || minutesLeft > 30) {
+        statusMessage = 'Get ready soon!';
+    } else {
+        statusMessage = 'Prayer is very soon! Get ready!';
+    }
+    
     return {
         name: nextPrayer.name,
-        time: prayerTimes.find(p => p.name === nextPrayer.name).time,
+        time: nextPrayer.time,
         hoursLeft: hoursLeft,
-        minutesLeft: minutesLeft
+        minutesLeft: minutesLeft,
+        timeDisplay: timeDisplay,
+        statusMessage: statusMessage
     };
 }
 
@@ -343,14 +372,45 @@ client.on('messageCreate', async (message) => {
         message.channel.send(response);
     }
 
-    // NEW: Next prayer command
+    // FIXED: Next prayer command with improved formatting
     if (message.content === '!next') {
         const nextPrayer = getNextPrayer();
         const response = `🕌 **Next Prayer: ${nextPrayer.name}**\n` +
                         `⏰ Time: ${nextPrayer.time}\n` +
-                        `⏳ Time left: ${nextPrayer.hoursLeft}h ${nextPrayer.minutesLeft}m\n` +
-                        `_${nextPrayer.hoursLeft > 0 ? 'Relax and prepare!' : 'Get ready! Prayer is soon!'}_`;
+                        `⏳ Time left: ${nextPrayer.timeDisplay}\n` +
+                        `_${nextPrayer.statusMessage}_`;
         message.channel.send(response);
+    }
+
+    // DEBUG: Command to check current times and prayer calculations
+    if (message.content === '!debug') {
+        const now = new Date();
+        const saudiTime = new Date(now.toLocaleString("en-US", {timeZone: "Asia/Riyadh"}));
+        const currentTime = saudiTime.getHours() * 60 + saudiTime.getMinutes();
+        
+        let debugInfo = `🔍 **Debug Information**\n`;
+        debugInfo += `Current Saudi Time: ${saudiTime.toLocaleString()}\n`;
+        debugInfo += `Current Minutes: ${currentTime}\n\n`;
+        debugInfo += `**Prayer Times:**\n`;
+        
+        const prayerTimes = [
+            { name: 'Fajr', time: currentPrayerTimes.Fajr },
+            { name: 'Dhuhr', time: currentPrayerTimes.Dhuhr },
+            { name: 'Asr', time: currentPrayerTimes.Asr },
+            { name: 'Maghrib', time: currentPrayerTimes.Maghrib },
+            { name: 'Isha', time: currentPrayerTimes.Isha }
+        ];
+        
+        prayerTimes.forEach(prayer => {
+            const [hours, minutes] = prayer.time.split(':').map(Number);
+            const prayerMinutes = hours * 60 + minutes;
+            debugInfo += `${prayer.name}: ${prayer.time} (${prayerMinutes} minutes)\n`;
+        });
+        
+        const nextPrayer = getNextPrayer();
+        debugInfo += `\n**Next Prayer:** ${nextPrayer.name} at ${nextPrayer.time}`;
+        
+        message.channel.send(debugInfo);
     }
 
     if (message.content === '!test') {
@@ -404,8 +464,9 @@ client.on('messageCreate', async (message) => {
 
 **أوقات الصلاة:**
 \`!prayertimes\` - عرض أوقات الصلاة اليوم
-\`!next\` - الوقت المتبقي للصلاة القادمة
+\`!next\` - الوقت المتبقي للصلاة القادمة (مُحدَّث)
 \`!refreshtimes\` - تحديث أوقات الصلاة من API
+\`!debug\` - معلومات تصحيح للأوقات
 
 **الأذكار والقرآن:**
 \`!morning\` - أذكار الصباح
@@ -423,7 +484,7 @@ client.on('messageCreate', async (message) => {
 **الميزات التلقائية:**
 - 🕘 تذكير قبل الصلاة بـ 5 دقائق
 - ⏰ تنبيه بوقت الصلاة مع منشن
-- 📋 تسجيل الحضور بعد الصلاة بـ 15 دقيقة
+- 📋 تسجيل الحضور بعد الصلاة بـ 10 دقيقة
 - 🌅 أذكار الصباح الساعة 6:00 ص
 - 🌇 أذكار المساء الساعة 6:00 م
 - 📖 آية قرآنية الساعة 12:00 ظ
@@ -582,22 +643,6 @@ function scheduleDailyInspiration() {
         timezone: CONFIG.TIMEZONE
     });
 
-    // Full Morning Package at 7:00 AM on Fridays
-    cron.schedule('0 7 * * 5', () => {
-        const morningPackage = getAthkarPackage(true);
-        sendAthkarWithAutoDelete(`📖 **Friday Morning Athkar Package** ✨\n${morningPackage}`, true);
-    }, {
-        timezone: CONFIG.TIMEZONE
-    });
-
-    // Full Evening Package at 19:30 PM on Sundays
-    cron.schedule('30 19 * * 0', () => {
-        const eveningPackage = getAthkarPackage(false);
-        sendAthkarWithAutoDelete(`📖 **Sunday Evening Athkar Package** ✨\n${eveningPackage}`, false);
-    }, {
-        timezone: CONFIG.TIMEZONE
-    });
-
     console.log('📅 Scheduled daily inspiration with auto-delete at midnight');
 }
 
@@ -617,12 +662,13 @@ function scheduleTextReminders(prayerName, prayerTimeStr) {
     
     // Use Saudi Arabia timezone explicitly
     const now = new Date();
-    const prayerDate = new Date(now.toLocaleString("en-US", {timeZone: "Asia/Riyadh"}));
+    const saudiNow = new Date(now.toLocaleString("en-US", {timeZone: "Asia/Riyadh"}));
+    const prayerDate = new Date(saudiNow);
     prayerDate.setHours(hours, minutes, 0, 0);
     
     console.log(`🕒 DEBUG: ${prayerName} at ${prayerTimeStr} -> ${prayerDate.toLocaleString()}`);
     
-    if (prayerDate < now) {
+    if (prayerDate < saudiNow) {
         prayerDate.setDate(prayerDate.getDate() + 1);
     }
     
@@ -680,6 +726,7 @@ async function fetchPrayerTimes() {
         return currentPrayerTimes;
     }
 }
+
 // ADD: Function to send prayer check-in with reactions
 async function sendPrayerCheckIn(prayerName) {
     console.log(`✅ Sending check-in for ${prayerName}`);
